@@ -153,7 +153,6 @@ dependencies = [
  "embedded-hal 1.0.0",
  "panic-halt",
  "rp-pico",
- "rp2040-boot2",
 ]
 
 [[package]]
