@@ -1,35 +1,31 @@
 #![no_std]
 #![no_main]
 
+use cortex_m::asm::nop;
 use panic_halt as _;
 
-use cortex_m::asm::nop;
-use cortex_m_rt::entry;
+use rp_pico as bsp;
 
-const LED_PIN: usize = 15;
+use bsp::entry;
+use bsp::hal::{pac, sio::Sio};
+use embedded_hal::digital::StatefulOutputPin;
 
 #[entry]
 fn main() -> ! {
-    let p = unsafe { rp2040_pac::Peripherals::steal() };
+    let mut pac = pac::Peripherals::take().unwrap();
+    let sio = Sio::new(pac.SIO);
 
-    p.RESETS.reset().modify(|_, w| w.io_bank0().set_bit());
-    p.RESETS.reset().modify(|_, w| w.io_bank0().clear_bit());
-    while p.RESETS.reset_done().read().io_bank0().bit_is_clear() {}
+    let pins = bsp::Pins::new(
+        pac.IO_BANK0,
+        pac.PADS_BANK0,
+        sio.gpio_bank0,
+        &mut pac.RESETS,
+    );
 
-    p.IO_BANK0
-        .gpio(LED_PIN)
-        .gpio_ctrl()
-        .modify(|_, w| w.funcsel().sio());
-
-    p.SIO
-        .gpio_oe_set()
-        .write(|w| unsafe { w.bits(1 << LED_PIN) });
+    let mut led_pin = pins.gpio15.into_push_pull_output();
 
     loop {
-        p.SIO
-            .gpio_out_xor()
-            .write(|w| unsafe { w.bits(1 << LED_PIN) });
-
+        led_pin.toggle().unwrap();
         for _ in 0..50_000 {
             nop();
         }
