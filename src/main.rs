@@ -5,15 +5,38 @@ use rp2040_hal as hal;
 
 use panic_halt as _;
 
-use cortex_m::asm::nop;
 use cortex_m_rt::entry;
 use embedded_hal::digital::StatefulOutputPin;
-use hal::{pac, sio::Sio};
+use hal::{
+    clocks::{Clock, init_clocks_and_plls},
+    pac,
+    sio::Sio,
+    watchdog::Watchdog,
+};
+
+const DELAY: u32 = 1000;
 
 #[entry]
 fn main() -> ! {
     let mut pac = unsafe { pac::Peripherals::steal() };
+    let core = pac::CorePeripherals::take().unwrap();
+    let mut watchdog = Watchdog::new(pac.WATCHDOG);
     let sio = Sio::new(pac.SIO);
+
+    let external_xtal_freq_hz = 12_000_000u32;
+    let clocks = init_clocks_and_plls(
+        external_xtal_freq_hz,
+        pac.XOSC,
+        pac.CLOCKS,
+        pac.PLL_SYS,
+        pac.PLL_USB,
+        &mut pac.RESETS,
+        &mut watchdog,
+    )
+    .ok()
+    .unwrap();
+
+    let mut delay = cortex_m::delay::Delay::new(core.SYST, clocks.system_clock.freq().to_Hz());
 
     let pins = hal::gpio::Pins::new(
         pac.IO_BANK0,
@@ -22,13 +45,11 @@ fn main() -> ! {
         &mut pac.RESETS,
     );
 
-    let mut led_pin = pins.gpio15.into_push_pull_output();
+    let mut led_pin = pins.gpio25.into_push_pull_output();
 
     loop {
         led_pin.toggle().unwrap();
-        for _ in 0..50_000 {
-            nop();
-        }
+        delay.delay_ms(DELAY);
     }
 }
 
