@@ -6,9 +6,10 @@ edition = "2024"
 [dependencies]
 cortex-m = "0.7"
 cortex-m-rt = "0.7"
+embedded-hal = "1.0"
 panic-halt = "1.0"
 rp2040-boot2 = "0.3"
-rp2040-pac = "0.6"
+rp2040-hal = "0.11"
 
 [[bin]]
 name = "embedded-pico"
