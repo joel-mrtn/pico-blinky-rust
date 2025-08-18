@@ -6,14 +6,37 @@ use panic_halt as _;
 use rp_pico as bsp;
 
 use bsp::entry;
-use bsp::hal::{pac, sio::Sio};
-use cortex_m::asm::nop;
+use bsp::hal::{
+    Watchdog,
+    clocks::{Clock, init_clocks_and_plls},
+    pac,
+    sio::Sio,
+};
 use embedded_hal::digital::StatefulOutputPin;
+
+const DELAY: u32 = 1000;
 
 #[entry]
 fn main() -> ! {
     let mut pac = pac::Peripherals::take().unwrap();
+    let core = pac::CorePeripherals::take().unwrap();
+    let mut watchdog = Watchdog::new(pac.WATCHDOG);
     let sio = Sio::new(pac.SIO);
+
+    let external_xtal_freq_hz = 12_000_000u32;
+    let clocks = init_clocks_and_plls(
+        external_xtal_freq_hz,
+        pac.XOSC,
+        pac.CLOCKS,
+        pac.PLL_SYS,
+        pac.PLL_USB,
+        &mut pac.RESETS,
+        &mut watchdog,
+    )
+    .ok()
+    .unwrap();
+
+    let mut delay = cortex_m::delay::Delay::new(core.SYST, clocks.system_clock.freq().to_Hz());
 
     let pins = bsp::Pins::new(
         pac.IO_BANK0,
@@ -26,8 +49,6 @@ fn main() -> ! {
 
     loop {
         led_pin.toggle().unwrap();
-        for _ in 0..50_000 {
-            nop();
-        }
+        delay.delay_ms(DELAY);
     }
 }
